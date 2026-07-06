@@ -48,4 +48,4 @@ Azure Administrator focused on infrastructure operations: identity, networking, 
 ## Contact
 
 - **Email:** marciomarquesbh@gmail.com
-- **LinkedIn:** [Márcio Moreira Marques](https://www.linkedin.com/in/márcio-moreira-marques-5113a7215)guardrails the other labs run under.
+- **LinkedIn:** [Márcio Moreira Marques](https://www.linkedin.com/in/márcio-moreira-marques-5113a7215)
