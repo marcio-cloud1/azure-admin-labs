@@ -101,3 +101,12 @@ Highlight the `VNetGlobalPeering` route in the output — proof the peering carr
 ```bash
 az group delete -n rg-lab04-network --yes --no-wait
 ```
+## Versão PowerShell
+
+Mesmo lab replicado via PowerShell (`Az.Network` module), para demonstrar 
+competência nas duas ferramentas exigidas pelo exame AZ-104.
+
+- VNet: `vnet-hub-ps` (mesmo address space, nome diferente para evitar conflito)
+- Script: `vnet-hub.ps1`
+
+![PowerShell VNet success](screenshots/04-powershell-vnet-success.png)
