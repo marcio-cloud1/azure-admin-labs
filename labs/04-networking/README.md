@@ -110,3 +110,13 @@ competência nas duas ferramentas exigidas pelo exame AZ-104.
 - Script: `vnet-hub.ps1`
 
 ![PowerShell VNet success](screenshots/04-powershell-vnet-success.png)
+## NSG — Network Security Group
+
+Criado um NSG (`nsg-mgmt`) com regra de entrada permitindo RDP (porta 3389),
+associado à subnet `snet-mgmt` da VNet `vnet-hub`.
+
+- NSG: `nsg-mgmt`
+- Regra: Allow RDP (TCP 3389), prioridade 100
+- Script: `nsg-mgmt.ps1`
+
+![NSG success](screenshots/05-nsg-success.png)
