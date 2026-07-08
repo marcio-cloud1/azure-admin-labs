@@ -120,3 +120,30 @@ associado à subnet `snet-mgmt` da VNet `vnet-hub`.
 - Script: `nsg-mgmt.ps1`
 
 ![NSG success](screenshots/05-nsg-success.png)
+## Route Table (UDR) — Roteamento customizado
+
+Criada uma Route Table (`rt-mgmt`) com uma rota customizada (UDR) forçando 
+tráfego de saída da internet a passar por um firewall virtual (NVA), 
+associada à subnet `snet-mgmt` da VNet `vnet-hub`.
+
+- Route Table: `rt-mgmt`
+- Rota: `force-firewall` — destino `0.0.0.0/0`, Next Hop Type `VirtualAppliance`, 
+  apontando para `10.0.2.4` (IP fictício de NVA, para fins didáticos)
+- Script: `routetable-mgmt.ps1`
+
+**Nota:** `EnableDdosProtection: False` é o estado esperado — DDoS Protection 
+Standard é um recurso pago à parte, não habilitado neste ambiente de estudo 
+(Free Trial). A proteção DDoS Basic permanece ativa automaticamente e sem custo.
+
+## Troubleshooting
+
+Durante este lab, ocorreram dois problemas de ambiente PowerShell (não relacionados 
+à sintaxe dos comandos de rede):
+
+1. **TypeLoadException entre módulos Az** — causado por uma instalação corrompida 
+   do `Az.Network`. Resolvido com `Uninstall-Module` seguido de reinstalação limpa 
+   (`Install-Module -Name Az.Accounts` e `Az.Network`).
+2. **Token de autenticação expirado após reinstalação** — resolvido reconectando 
+   com `Connect-AzAccount -UseDeviceAuthentication -TenantId <tenant-id>`.
+
+![Route Table success](screenshots/06-routetable-success.png)
