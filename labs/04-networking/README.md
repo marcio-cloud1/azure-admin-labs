@@ -147,3 +147,20 @@ Durante este lab, ocorreram dois problemas de ambiente PowerShell (não relacion
    com `Connect-AzAccount -UseDeviceAuthentication -TenantId <tenant-id>`.
 
 ![Route Table success](screenshots/06-routetable-success.png)
+## Peering entre VNets
+
+Configurado peering bidirecional entre `vnet-hub` e `vnet-hub-ps`.
+
+- Peering: `hub-to-hubps` e `hubps-to-hub` — ambos `Connected`
+- Script: `peering-hub.ps1`
+
+### Troubleshooting: overlap de endereçamento IP
+
+Tentativa inicial de peering falhou porque `vnet-hub` e `vnet-hub-ps` 
+compartilhavam o mesmo range (`10.0.0.0/16`). Peering entre VNets exige 
+endereçamento sem sobreposição.
+
+**Solução:** reendereçado `vnet-hub-ps` para `10.1.0.0/16` (subnet `10.1.1.0/24`), 
+eliminando o overlap. Peering criado com sucesso nos dois sentidos.
+
+![Peering connected](screenshots/07-peering-connected.png)
