@@ -164,3 +164,21 @@ endereçamento sem sobreposição.
 eliminando o overlap. Peering criado com sucesso nos dois sentidos.
 
 ![Peering connected](screenshots/07-peering-connected.png)
+## Private DNS Zone
+
+Criada zona DNS privada (`contoso.internal`), linkada à VNet `vnet-hub` com 
+autoregistration habilitada, e um registro A manual de exemplo.
+
+- Zona: `contoso.internal` (recurso global, sem região)
+- Link: `link-hub` → `vnet-hub`, com autoregistration
+- Registro: `vm-app01` → `10.0.1.10`
+- Script: `privatedns-hub.ps1`
+
+### Troubleshooting
+
+Mesmo padrão de `TypeLoadException` já visto no lab de Route Table (Az.Network), 
+desta vez no módulo `Az.PrivateDns`. Resolvido com `Uninstall-Module` + 
+reinstalação limpa do módulo específico, seguido de reconexão com `Connect-AzAccount`.
+
+![Private DNS success](screenshots/08-privatedns-success.png)
+
