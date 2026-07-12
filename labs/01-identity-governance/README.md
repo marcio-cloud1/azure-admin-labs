@@ -61,3 +61,18 @@ az account management-group subscription add --name mg-corp --subscription 9c131
   <img src="screenshots/task2-management-group.png" width="500" />
 </p>
 
+### 3. Built-in policy — Allowed locations (Deny) (✅ completed)
+
+```powershell
+az policy assignment create --name allowed-locations --scope /providers/Microsoft.Management/managementGroups/mg-corp --policy e56962a6-4747-49cd-b67b-bf8b01975c4c --params @labs/01-identity-governance/scripts/task3-params.json
+
+az storage account create --name teststoragedeny01 --resource-group rg-lab1 --location eastus --sku Standard_LRS
+```
+
+**Result:** blocked with `RequestDisallowedByPolicy` — confirms the guardrail works.
+
+**Note:** this built-in policy excludes `Microsoft.Resources/resourceGroups` from evaluation by default — it governs the location of resources *inside* a resource group, not the RG object itself.
+
+<p align="center">
+  <img src="screenshots/task3-policy-deny.png" width="500" />
+</p>
