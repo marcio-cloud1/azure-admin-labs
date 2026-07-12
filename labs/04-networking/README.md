@@ -181,4 +181,19 @@ desta vez no módulo `Az.PrivateDns`. Resolvido com `Uninstall-Module` +
 reinstalação limpa do módulo específico, seguido de reconexão com `Connect-AzAccount`.
 
 ![Private DNS success](screenshots/08-privatedns-success.png)
+## Internal Load Balancer
+
+Criado Internal Load Balancer (`lb-internal`) com frontend IP privado, 
+backend pool, health probe HTTP e regra de balanceamento TCP porta 80.
+
+- Load Balancer: `lb-internal` — SKU **Basic** (gratuito)
+- Frontend IP privado: `10.0.1.100` (subnet `snet-mgmt`)
+- Script: `loadbalancer-internal.ps1`
+
+**Decisão técnica:** optado por SKU Basic em vez de Standard neste lab, 
+já que o cenário (uso interno, sem necessidade de SLA/zonas de disponibilidade) 
+não justifica o custo do Standard. Recurso removido após validação 
+(`Remove-AzLoadBalancer`), seguindo disciplina de custo do ambiente de estudo.
+
+![Load Balancer success](screenshots/09-loadbalancer-success.png)
 
