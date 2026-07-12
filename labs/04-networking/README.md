@@ -220,3 +220,22 @@ resolução: reinstalação limpa de `Az.Accounts` + `Az.Network`, seguida de
 reconexão via `Connect-AzAccount`.
 
 ![Application Gateway success](screenshots/10-appgateway-success.png)
+## Private Endpoint
+
+Criado Private Endpoint (`pe-storage`) conectando a Storage Account 
+`storagebashpowershell` (grupo `blob`) diretamente à subnet `snet-mgmt` 
+da VNet `vnet-hub`, com IP privado dentro da rede.
+
+- Private Endpoint: `pe-storage`
+- Alvo: Storage Account `storagebashpowershell`, grupo `blob`
+- Script: `privateendpoint-storage.ps1`
+
+**Nota:** Private DNS Zone integrada não configurada neste lab (escopo focado 
+na criação do Private Endpoint em si). Sem essa integração, a resolução de 
+nome do serviço continuaria apontando para o IP público em máquinas fora 
+da VNet — comportamento documentado como próximo passo de hardening.
+
+Recurso removido após validação (`Remove-AzPrivateEndpoint`), seguindo 
+disciplina de custo do ambiente de estudo.
+
+![Private Endpoint success](screenshots/11-privateendpoint-success.png)
