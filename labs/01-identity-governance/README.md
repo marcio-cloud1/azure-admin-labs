@@ -10,7 +10,7 @@ az ad user create --display-name "Test RBAC AZ104" --user-principal-name "teste.
 
 **Result:** user created successfully (Object ID: `26c446d3-6bf5-40ef-a787-8786848e2090`).
 
-*Evidence: `screenshots/01-entra-user-created.png`.*
+![Entra ID test user created](screenshots/01-entra-user-created.png)
 
 ---
 
@@ -43,4 +43,5 @@ Portal → Cost Management → Budgets → created `lab-budget1`, scope: **Billi
 
 **Note:** the original plan targeted Subscription scope; Azure Cost Management also supports Billing Account, Billing Profile, and Resource Group scopes. Billing Account scope was used here, which extends the guardrail to any future subscription under this billing account.
 
-*Evidence: `screenshots/task1-budget-alerts.png`, `screenshots/task1-budget-summary.png`.*
+![Budget alert conditions](screenshots/task1-budget-alerts.png)
+![Budget summary](screenshots/task1-budget-summary.png)
