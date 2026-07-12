@@ -49,3 +49,12 @@ Portal → Cost Management → Budgets → created `lab-budget1`, scope: **Billi
   <img src="screenshots/task1-budget-alerts.png" width="400" />
   <img src="screenshots/task1-budget-summary.png" width="400" />
 </p>
+### 2. Management group (✅ completed)
+```powershell
+az account management-group create --name mg-corp --display-name "Corp"
+az account management-group subscription add --name mg-corp --subscription 9c1310f1-b1f5-46bc-ba21-62ce547631aa
+```
+
+<p align="center">
+  <img src="screenshots/task2-management-group.png" width="500" />
+</p>
