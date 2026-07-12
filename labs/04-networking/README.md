@@ -1,241 +1,145 @@
 # Lab 04 — Hub-Spoke Network with Global Peering
 
-**Scenario:** A hub-spoke topology across two regions: shared services in the hub (West Europe), an application spoke in North Europe. Requirements: private connectivity via global peering, layered NSG security, internal name resolution, secure admin access without public IPs, and a load-balanced backend.
+**Scenario:** A hub-spoke topology across two regions, with shared services in the hub, private connectivity via global peering, layered NSG security, and a load-balanced backend.
 
-**AZ-104 skills:** VNets/subnets · global peering (both directions) · NSGs at subnet **and** NIC level · service tags · private DNS zones + links · Azure Bastion · Standard Load Balancer + health probes · effective routes
+**Requirements:** private connectivity via global peering, layered NSG security, and a load-balanced backend.
 
-**Estimated cost:** €2–6 — the Load Balancer and Bastion bill hourly; complete those tasks in one sitting and delete. Use the **Bastion Developer SKU if available in your region** (free); otherwise deploy Basic/Standard and remove it the same day. · **Time:** 4–5 h (the deepest lab — this was my weakest exam domain, so it gets the most rigor)
+**AZ-104 skills covered:** VNets/subnets · global peering (both directions) · NSGs and effective security rules · route tables (UDR) · private DNS · Standard/Basic Load Balancer + health probes · Application Gateway · Private Endpoint · effective routes.
 
-## Architecture
+**Resource Group:** `rg-lab1` &nbsp;|&nbsp; **Region:** North Europe (West Europe was unavailable on Free Trial)
 
-```
-vnet-hub (westeurope, 10.0.0.0/16)          vnet-spoke1 (northeurope, 10.1.0.0/16)
-├── snet-data (10.0.2.0/24)                 ├── snet-app (10.1.1.0/24)
-│   └── vm-sql1  [nsg-data + nsg-nic]       │   └── vm-app1 [nsg-app]
-├── snet-web  (10.0.1.0/24)                 │
-│   ├── vm-web1 ─┐                          │
-│   └── vm-web2 ─┴─ lb-web (Standard, internal)
-├── AzureBastionSubnet (/26)                │
-│   └── bastion-hub                         │
-└── Private DNS zone: corp.internal ── links: vnet-hub (auto-reg) + vnet-spoke1
-            └────────── global peering (both directions) ──────────┘
-```
+---
 
-## Tasks
+## 1. Virtual Network (VNet) + Subnet
 
-### 1. VNets and subnets (CLI)
-```bash
-az group create -n rg-lab04-network -l westeurope --tags CostCenter=LAB
-az network vnet create -g rg-lab04-network -n vnet-hub -l westeurope \
-  --address-prefix 10.0.0.0/16 \
-  --subnet-name snet-web --subnet-prefix 10.0.1.0/24
-az network vnet subnet create -g rg-lab04-network --vnet-name vnet-hub \
-  -n snet-data --address-prefix 10.0.2.0/24
-az network vnet subnet create -g rg-lab04-network --vnet-name vnet-hub \
-  -n AzureBastionSubnet --address-prefix 10.0.255.0/26
-az network vnet create -g rg-lab04-network -n vnet-spoke1 -l northeurope \
-  --address-prefix 10.1.0.0/16 \
-  --subnet-name snet-app --subnet-prefix 10.1.1.0/24
-```
-Document why `AzureBastionSubnet` must have exactly that name and at least /26.
+Created two VNets to demonstrate both CLI and PowerShell workflows.
 
-### 2. Global peering — both directions, on purpose
-Create only the hub→spoke peering first; screenshot the **"Initiated"** state; then create spoke→hub and screenshot **"Connected"**. This demonstrates the most common peering misconfiguration.
-```bash
-SPOKE_ID=$(az network vnet show -g rg-lab04-network -n vnet-spoke1 --query id -o tsv)
-HUB_ID=$(az network vnet show -g rg-lab04-network -n vnet-hub --query id -o tsv)
-az network vnet peering create -g rg-lab04-network -n HubToSpoke1 \
-  --vnet-name vnet-hub --remote-vnet $SPOKE_ID --allow-vnet-access
-# check state here → Initiated
-az network vnet peering create -g rg-lab04-network -n Spoke1ToHub \
-  --vnet-name vnet-spoke1 --remote-vnet $HUB_ID --allow-vnet-access
-# check state here → Connected
-```
+- **VNet (Bash/CLI):** `vnet-hub` — `10.0.0.0/16`, subnet `snet-mgmt` (`10.0.1.0/24`)
+- **VNet (PowerShell):** `vnet-hub-ps` — originally `10.0.0.0/16`, later re-addressed to `10.1.0.0/16` (see Peering section)
+- Scripts: `vnet-hub.sh`, `vnet-hub.ps1`
 
-### 3. Layered NSGs — prove the two-gate rule
-Deploy `vm-sql1` (B1s, no public IP) in `snet-data` and `vm-app1` in `snet-app`.
-- `nsg-data` (subnet): allow TCP 1433 from 10.1.0.0/16, priority 100
-- `nsg-nic` (attached to vm-sql1 NIC): first add `Deny_All_Inbound` priority 100 → **test from vm-app1 and show the connection failing** even though the subnet NSG allows it
-- Then add an allow rule for 1433 at priority 90 on the NIC NSG → test again, show success
+### Troubleshooting
+- **Bash line continuation (`\`) used in PowerShell** — PowerShell doesn't support `\` for line continuation (that's Bash/Linux syntax). Each line was parsed as a new command. **Fix:** use the backtick `` ` `` for line continuation in PowerShell, or type the command on a single line.
+- **`RequestDisallowedByAzure` — region unavailable** — West Europe was not accepting new resources on the Free Trial subscription. **Fix:** specify `--location northeurope` (CLI) / `-Location "northeurope"` (PowerShell), and set a default with `az config set defaults.location=northeurope`.
 
-This before/after is the strongest possible evidence of understanding NSG evaluation (subnet **and** NIC must both allow; lowest priority number wins).
-
-### 4. Service tags
-Add an inbound rule allowing the `AzureLoadBalancer` service tag on the web NSG and document why (health probes originate from 168.63.129.16).
-
-### 5. Private DNS zone
-```bash
-az network private-dns zone create -g rg-lab04-network -n corp.internal
-az network private-dns link vnet create -g rg-lab04-network -z corp.internal \
-  -n link-hub -v vnet-hub -e true          # auto-registration
-az network private-dns link vnet create -g rg-lab04-network -z corp.internal \
-  -n link-spoke1 -v vnet-spoke1 -e false   # resolution only
-```
-**Validation:** from vm-app1, `nslookup vm-sql1.corp.internal` — first WITHOUT the spoke link (fails), then with it (succeeds). Document link vs auto-registration.
-
-### 6. Bastion — admin access without public IPs
-Deploy Bastion (Developer SKU if offered; otherwise Basic — delete same day) and connect to vm-sql1 through the browser. Screenshot the session and the VM overview showing **no public IP**.
-
-### 7. Standard Load Balancer
-Two web VMs (`vm-web1/2`, Nginx serving a page with the hostname), internal Standard LB, backend pool, HTTP health probe on port 80, LB rule. From vm-app1, `curl` the frontend IP repeatedly and capture responses alternating between the two hostnames. Then stop Nginx on vm-web1 and show traffic converging on vm-web2 (probe in action).
-
-### 8. Effective routes
-```bash
-az network nic show-effective-route-table -g rg-lab04-network \
-  -n <vm-app1-nic> -o table
-```
-Highlight the `VNetGlobalPeering` route in the output — proof the peering carries the traffic.
-
-## Evidence checklist
-- [ ] Peering state Initiated → Connected
-- [ ] Connection blocked by NIC NSG, then allowed after priority-90 rule
-- [ ] nslookup failing → succeeding after DNS link
-- [ ] Bastion session to a VM with no public IP
-- [ ] curl alternating backends; failover after stopping one
-- [ ] Effective route table with the peering route
-
-## What broke and how I fixed it
-*(fill in — this section is gold in interviews)*
-
-## Cleanup
-```bash
-az group delete -n rg-lab04-network --yes --no-wait
-```
-## Versão PowerShell
-
-Mesmo lab replicado via PowerShell (`Az.Network` module), para demonstrar 
-competência nas duas ferramentas exigidas pelo exame AZ-104.
-
-- VNet: `vnet-hub-ps` (mesmo address space, nome diferente para evitar conflito)
-- Script: `vnet-hub.ps1`
-
+![VNet deployment success](screenshots/03-deployment-success.png)
 ![PowerShell VNet success](screenshots/04-powershell-vnet-success.png)
-## NSG — Network Security Group
 
-Criado um NSG (`nsg-mgmt`) com regra de entrada permitindo RDP (porta 3389),
-associado à subnet `snet-mgmt` da VNet `vnet-hub`.
+---
+
+## 2. Network Security Group (NSG)
+
+Created an NSG (`nsg-mgmt`) with an inbound rule allowing RDP (port 3389), associated with subnet `snet-mgmt` of VNet `vnet-hub`.
 
 - NSG: `nsg-mgmt`
-- Regra: Allow RDP (TCP 3389), prioridade 100
-- Script: `nsg-mgmt.ps1`
+- Rule: Allow RDP (TCP 3389), priority 100
+- Scripts: `nsg-mgmt.ps1` (CLI equivalent documented inline)
 
 ![NSG success](screenshots/05-nsg-success.png)
-## Route Table (UDR) — Roteamento customizado
 
-Criada uma Route Table (`rt-mgmt`) com uma rota customizada (UDR) forçando 
-tráfego de saída da internet a passar por um firewall virtual (NVA), 
-associada à subnet `snet-mgmt` da VNet `vnet-hub`.
+---
+
+## 3. Route Table (UDR) — Custom Routing
+
+Created a Route Table (`rt-mgmt`) with a custom route (UDR) forcing outbound internet traffic through a virtual firewall appliance (NVA), associated with subnet `snet-mgmt` of VNet `vnet-hub`.
 
 - Route Table: `rt-mgmt`
-- Rota: `force-firewall` — destino `0.0.0.0/0`, Next Hop Type `VirtualAppliance`, 
-  apontando para `10.0.2.4` (IP fictício de NVA, para fins didáticos)
+- Route: `force-firewall` — destination `0.0.0.0/0`, Next Hop Type `VirtualAppliance`, pointing to `10.0.2.4` (fictitious NVA IP, for demonstration purposes)
 - Script: `routetable-mgmt.ps1`
 
-**Nota:** `EnableDdosProtection: False` é o estado esperado — DDoS Protection 
-Standard é um recurso pago à parte, não habilitado neste ambiente de estudo 
-(Free Trial). A proteção DDoS Basic permanece ativa automaticamente e sem custo.
+**Note:** `EnableDdosProtection: False` is the expected state — DDoS Protection Standard is a paid add-on, not enabled in this study environment (Free Trial). DDoS Basic remains active automatically at no cost.
 
-## Troubleshooting
-
-Durante este lab, ocorreram dois problemas de ambiente PowerShell (não relacionados 
-à sintaxe dos comandos de rede):
-
-1. **TypeLoadException entre módulos Az** — causado por uma instalação corrompida 
-   do `Az.Network`. Resolvido com `Uninstall-Module` seguido de reinstalação limpa 
-   (`Install-Module -Name Az.Accounts` e `Az.Network`).
-2. **Token de autenticação expirado após reinstalação** — resolvido reconectando 
-   com `Connect-AzAccount -UseDeviceAuthentication -TenantId <tenant-id>`.
+### Troubleshooting
+Two PowerShell environment issues occurred during this lab (unrelated to networking command syntax):
+1. **`TypeLoadException` across Az modules** — caused by a corrupted `Az.Network` installation. Fixed with `Uninstall-Module` followed by a clean reinstall (`Install-Module -Name Az.Accounts` and `Az.Network`).
+2. **Expired authentication token after reinstall** — fixed by reconnecting with `Connect-AzAccount -UseDeviceAuthentication -TenantId <tenant-id>`.
 
 ![Route Table success](screenshots/06-routetable-success.png)
-## Peering entre VNets
 
-Configurado peering bidirecional entre `vnet-hub` e `vnet-hub-ps`.
+---
 
-- Peering: `hub-to-hubps` e `hubps-to-hub` — ambos `Connected`
+## 4. Peering between VNets
+
+Configured bidirectional peering between `vnet-hub` and `vnet-hub-ps`.
+
+- Peering: `hub-to-hubps` and `hubps-to-hub` — both `Connected`
 - Script: `peering-hub.ps1`
 
-### Troubleshooting: overlap de endereçamento IP
+### Troubleshooting: IP address overlap
+The initial peering attempt failed with an `overlapping address space` error — `vnet-hub` and `vnet-hub-ps` shared the same range (`10.0.0.0/16`). VNet peering requires non-overlapping address spaces.
 
-Tentativa inicial de peering falhou porque `vnet-hub` e `vnet-hub-ps` 
-compartilhavam o mesmo range (`10.0.0.0/16`). Peering entre VNets exige 
-endereçamento sem sobreposição.
-
-**Solução:** reendereçado `vnet-hub-ps` para `10.1.0.0/16` (subnet `10.1.1.0/24`), 
-eliminando o overlap. Peering criado com sucesso nos dois sentidos.
+**Fix:** re-addressed `vnet-hub-ps` to `10.1.0.0/16` (subnet `10.1.1.0/24`), eliminating the overlap. Peering was then created successfully in both directions.
 
 ![Peering connected](screenshots/07-peering-connected.png)
-## Private DNS Zone
 
-Criada zona DNS privada (`contoso.internal`), linkada à VNet `vnet-hub` com 
-autoregistration habilitada, e um registro A manual de exemplo.
+---
 
-- Zona: `contoso.internal` (recurso global, sem região)
-- Link: `link-hub` → `vnet-hub`, com autoregistration
-- Registro: `vm-app01` → `10.0.1.10`
+## 5. Private DNS Zone
+
+Created a private DNS zone (`contoso.internal`), linked to VNet `vnet-hub` with autoregistration enabled, plus a manual A record example.
+
+- Zone: `contoso.internal` (global resource, no region)
+- Link: `link-hub` → `vnet-hub`, with autoregistration
+- Record: `vm-app01` → `10.0.1.10`
 - Script: `privatedns-hub.ps1`
 
 ### Troubleshooting
-
-Mesmo padrão de `TypeLoadException` já visto no lab de Route Table (Az.Network), 
-desta vez no módulo `Az.PrivateDns`. Resolvido com `Uninstall-Module` + 
-reinstalação limpa do módulo específico, seguido de reconexão com `Connect-AzAccount`.
+Same `TypeLoadException` pattern seen in the Route Table lab (`Az.Network`), this time in the `Az.PrivateDns` module. Fixed with `Uninstall-Module` + clean reinstall of the specific module, followed by reconnecting via `Connect-AzAccount`.
 
 ![Private DNS success](screenshots/08-privatedns-success.png)
-## Internal Load Balancer
 
-Criado Internal Load Balancer (`lb-internal`) com frontend IP privado, 
-backend pool, health probe HTTP e regra de balanceamento TCP porta 80.
+---
 
-- Load Balancer: `lb-internal` — SKU **Basic** (gratuito)
-- Frontend IP privado: `10.0.1.100` (subnet `snet-mgmt`)
+## 6. Internal Load Balancer
+
+Created an Internal Load Balancer (`lb-internal`) with a private frontend IP, backend pool, HTTP health probe, and a TCP port 80 load-balancing rule.
+
+- Load Balancer: `lb-internal` — SKU **Basic** (free)
+- Private frontend IP: `10.0.1.100` (subnet `snet-mgmt`)
 - Script: `loadbalancer-internal.ps1`
 
-**Decisão técnica:** optado por SKU Basic em vez de Standard neste lab, 
-já que o cenário (uso interno, sem necessidade de SLA/zonas de disponibilidade) 
-não justifica o custo do Standard. Recurso removido após validação 
-(`Remove-AzLoadBalancer`), seguindo disciplina de custo do ambiente de estudo.
+**Technical decision:** chose Basic SKU over Standard for this lab, since the scenario (internal use, no SLA/availability zone requirement) didn't justify the Standard cost. Resource removed after validation (`Remove-AzLoadBalancer`), following the environment's cost discipline.
 
 ![Load Balancer success](screenshots/09-loadbalancer-success.png)
-## Application Gateway
 
-Criado Application Gateway (`appgw-web`), SKU Standard_v2, com listener HTTP 
-básico e regra de roteamento simples, demonstrando os componentes centrais 
-(subnet dedicada, frontend IP público, backend pool, HTTP settings, listener, 
-routing rule).
+---
+
+## 7. Application Gateway
+
+Created an Application Gateway (`appgw-web`), SKU Standard_v2, with a basic HTTP listener and a simple routing rule, demonstrating the core components (dedicated subnet, public frontend IP, backend pool, HTTP settings, listener, routing rule).
 
 - Application Gateway: `appgw-web` — SKU **Standard_v2**
-- Subnet dedicada: `snet-appgw` (10.0.2.0/24)
+- Dedicated subnet: `snet-appgw` (`10.0.2.0/24`)
 - Script: `appgateway-web.ps1`
 
-**Disciplina de custo:** recurso removido imediatamente após validação 
-(`Remove-AzApplicationGateway` + `Remove-AzPublicIpAddress`), já que 
-Application Gateway não possui SKU gratuito e cobra por hora de provisionamento 
-(~15-20 min de deploy).
+**Cost discipline:** resource removed immediately after validation (`Remove-AzApplicationGateway` + `Remove-AzPublicIpAddress`), since Application Gateway has no free SKU and bills per hour of provisioning (~15–20 min deploy time).
 
 ### Troubleshooting
+Another `TypeLoadException` episode in the `Az.Network` module (third occurrence in the networking domain), this time while creating the dedicated subnet. Same resolution pattern: clean reinstall of `Az.Accounts` + `Az.Network`, followed by reconnecting via `Connect-AzAccount`.
 
-Novo episódio de `TypeLoadException` no módulo `Az.Network` (terceira ocorrência 
-no domínio de Redes), desta vez ao criar a subnet dedicada. Mesmo padrão de 
-resolução: reinstalação limpa de `Az.Accounts` + `Az.Network`, seguida de 
-reconexão via `Connect-AzAccount`.
+After a fourth occurrence of this same error (while querying the deleted Application Gateway), a **full module cleanup** was performed instead of a targeted fix: all `Az.*` modules were uninstalled and the complete `Az` module was reinstalled from scratch. This resolved the recurring instability permanently.
 
 ![Application Gateway success](screenshots/10-appgateway-success.png)
-## Private Endpoint
 
-Criado Private Endpoint (`pe-storage`) conectando a Storage Account 
-`storagebashpowershell` (grupo `blob`) diretamente à subnet `snet-mgmt` 
-da VNet `vnet-hub`, com IP privado dentro da rede.
+---
+
+## 8. Private Endpoint
+
+Created a Private Endpoint (`pe-storage`) connecting Storage Account `storagebashpowershell` (`blob` group) directly to subnet `snet-mgmt` of VNet `vnet-hub`, with a private IP inside the network.
 
 - Private Endpoint: `pe-storage`
-- Alvo: Storage Account `storagebashpowershell`, grupo `blob`
+- Target: Storage Account `storagebashpowershell`, group `blob`
 - Script: `privateendpoint-storage.ps1`
 
-**Nota:** Private DNS Zone integrada não configurada neste lab (escopo focado 
-na criação do Private Endpoint em si). Sem essa integração, a resolução de 
-nome do serviço continuaria apontando para o IP público em máquinas fora 
-da VNet — comportamento documentado como próximo passo de hardening.
+**Note:** integrated Private DNS Zone was not configured in this lab (scope focused on the Private Endpoint creation itself). Without that integration, name resolution for the service would still point to its public IP from machines outside the VNet — documented here as a follow-up hardening step.
 
-Recurso removido após validação (`Remove-AzPrivateEndpoint`), seguindo 
-disciplina de custo do ambiente de estudo.
+Resource removed after validation (`Remove-AzPrivateEndpoint`), following the environment's cost discipline.
 
 ![Private Endpoint success](screenshots/11-privateendpoint-success.png)
+
+---
+
+## Environment Notes
+
+- **PowerShell module maintenance:** the `Az.Network`-family modules exhibited a recurring `TypeLoadException` (`get_SerializationSettings has no implementation`) across multiple labs. Root cause: a corrupted/misaligned module installation. Point fixes (reinstalling individual modules) resolved it temporarily; a full `Az` module reinstall resolved it permanently.
+- **Cost discipline:** free resources (VNet, NSG, Route Table, Peering, Private DNS) were left running with no cost impact. Paid resources (Load Balancer Standard avoided in favor of Basic, Application Gateway, Private Endpoint) were deleted immediately after validating successful deployment.
