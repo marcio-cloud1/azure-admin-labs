@@ -220,28 +220,3 @@ resolução: reinstalação limpa de `Az.Accounts` + `Az.Network`, seguida de
 reconexão via `Connect-AzAccount`.
 
 ![Application Gateway success](screenshots/10-appgateway-success.png)
-## Application Gateway
-
-Criado Application Gateway (`appgw-web`), SKU Standard_v2, com listener HTTP 
-básico e regra de roteamento simples, demonstrando os componentes centrais 
-(subnet dedicada, frontend IP público, backend pool, HTTP settings, listener, 
-routing rule).
-
-- Application Gateway: `appgw-web` — SKU **Standard_v2**
-- Subnet dedicada: `snet-appgw` (10.0.2.0/24)
-- Script: `appgateway-web.ps1`
-
-**Disciplina de custo:** recurso removido imediatamente após validação 
-(`Remove-AzApplicationGateway` + `Remove-AzPublicIpAddress`), já que 
-Application Gateway não possui SKU gratuito e cobra por hora de provisionamento 
-(~15-20 min de deploy).
-
-### Troubleshooting
-
-Novo episódio de `TypeLoadException` no módulo `Az.Network` (terceira ocorrência 
-no domínio de Redes), desta vez ao criar a subnet dedicada. Mesmo padrão de 
-resolução: reinstalação limpa de `Az.Accounts` + `Az.Network`, seguida de 
-reconexão via `Connect-AzAccount`.
-
-![Application Gateway success](screenshots/10-appgateway-success.png)
-
