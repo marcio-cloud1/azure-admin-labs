@@ -22,7 +22,6 @@ Created two VNets to demonstrate both CLI and PowerShell workflows.
 - **Bash line continuation (`\`) used in PowerShell** — PowerShell doesn't support `\` for line continuation (that's Bash/Linux syntax). Each line was parsed as a new command. **Fix:** use the backtick `` ` `` for line continuation in PowerShell, or type the command on a single line.
 - **`RequestDisallowedByAzure` — region unavailable** — West Europe was not accepting new resources on the Free Trial subscription. **Fix:** specify `--location northeurope` (CLI) / `-Location "northeurope"` (PowerShell), and set a default with `az config set defaults.location=northeurope`.
 
-![VNet deployment success](screenshots/03-deployment-success.png)
 ![PowerShell VNet success](screenshots/04-powershell-vnet-success.png)
 
 ---
