@@ -121,3 +121,15 @@ The NSG picked up `CostCenter: LAB` on its own, with no tag specified at creatio
   <img src="screenshots/task5-tag-inheritance.png" width="480" />
 </p>
 
+### 6. RBAC: Virtual Machine Contributor (Completed)
+
+```powershell
+az role assignment create --assignee teste.rbac@marciomarquesbhgmail.onmicrosoft.com --role "Virtual Machine Contributor" --scope /subscriptions/9c1310f1-b1f5-46bc-ba21-62ce547631aa/resourceGroups/rg-lab01-governance
+```
+
+Went with Virtual Machine Contributor instead of plain Contributor, scoped to just this resource group instead of the whole subscription. A support team handling VM issues doesn't need to touch networking, storage, or anything else in the subscription, and doesn't need to manage who else has access - Virtual Machine Contributor covers exactly VM operations and nothing more, and the RG scope means a mistake here can't spill into other resource groups.
+
+<p align="center">
+  <img src="screenshots/task6-rbac-assignment.png" width="480" />
+</p>
+
