@@ -76,6 +76,7 @@ az storage account create --name teststoragedeny01 --resource-group rg-lab1 --lo
 <p align="center">
   <img src="screenshots/task3-policy-deny.png" width="500" />
 </p>
+
 ### 4. Custom policy — audit public blob access (✅ completed)
 
 ```powershell
