@@ -102,3 +102,22 @@ Definition and assignment both went through on the first try. Compliance results
 <p align="center">
   <img src="screenshots/task4-custom-policy.png" width="480" />
 </p>
+
+### 5. Tag inheritance (Modify) (Completed)
+
+```powershell
+az group create -n rg-lab01-governance -l northeurope --tags CostCenter=LAB
+
+az policy assignment create --name inherit-costcenter-tag --scope /subscriptions/9c1310f1-b1f5-46bc-ba21-62ce547631aa/resourceGroups/rg-lab01-governance --policy ea3f2387-9b95-492a-a190-fcdc54f7b070 --params @labs/01-identity-governance/scripts/task5-params.json --mi-system-assigned --location northeurope --identity-scope /subscriptions/9c1310f1-b1f5-46bc-ba21-62ce547631aa/resourceGroups/rg-lab01-governance --role Contributor
+
+az network nsg create --name nsg-test-tag --resource-group rg-lab01-governance --location northeurope
+```
+
+Used the built-in policy "Inherit a tag from the resource group if missing" - it needs a system-assigned managed identity with Contributor at the assignment scope, otherwise there's nothing to actually apply the remediation with.
+
+The NSG picked up `CostCenter: LAB` on its own, with no tag specified at creation. Ran a remediation task against the resource group afterward just to see the command work - it came back with zero resources needing remediation, which tracks: remediation only matters for things that existed before the policy assignment, and this NSG was created after.
+
+<p align="center">
+  <img src="screenshots/task5-tag-inheritance.png" width="480" />
+</p>
+
