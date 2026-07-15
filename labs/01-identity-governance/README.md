@@ -76,3 +76,16 @@ az storage account create --name teststoragedeny01 --resource-group rg-lab1 --lo
 <p align="center">
   <img src="screenshots/task3-policy-deny.png" width="500" />
 </p>
+### 4. Custom policy — audit public blob access (✅ completed)
+
+```powershell
+az policy definition create --name audit-public-blob --rules @labs/01-identity-governance/scripts/policy-audit-public-blob.json --mode Indexed
+
+az policy assignment create --name audit-public-blob --scope /subscriptions/9c1310f1-b1f5-46bc-ba21-62ce547631aa --policy audit-public-blob
+```
+
+**Result:** custom policy definition and assignment created at subscription scope. Compliance evaluation for existing/new storage accounts can take up to ~30 minutes to appear in the Compliance view.
+
+<p align="center">
+  <img src="screenshots/task4-custom-policy.png" width="500" />
+</p>
