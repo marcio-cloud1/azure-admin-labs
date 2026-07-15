@@ -103,6 +103,10 @@ Definition and assignment both went through on the first try. Compliance results
   <img src="screenshots/task4-custom-policy.png" width="480" />
 </p>
 
+<p align="center">
+  <img src="screenshots/task4-compliance.png" width="480" />
+</p>
+
 ### 5. Tag inheritance (Modify) (Completed)
 
 ```powershell
@@ -146,4 +150,33 @@ Delete attempt failed with `ScopeLocked` - the CLI/ARM name for what the Portal 
 <p align="center">
   <img src="screenshots/task7-resource-lock.png" width="480" />
 </p>
+
+## Evidence checklist
+
+- [x] Budget with alerts
+- [x] Policy denial error in `eastus`
+- [x] Compliance view showing the custom audit policy evaluating resources
+- [x] Inherited tag on a resource + remediation task result
+- [x] 409 error caused by the lock
+
+## What broke and how I fixed it
+
+`Get-AzContext` threw a `TypeLoadException` early on (looked like a version mismatch between the Az PowerShell submodules). Didn't chase it down - switched to `az account show --query id -o tsv` since I was already doing everything through the CLI anyway.
+
+Pasted the wrong thing into a `--subscription` value once and ended up with the whole previous command duplicated inside the argument. The CLI error made it obvious what happened.
+
+`az policy assignment create --params` kept failing with "dict type value expected, got string" twice, for two different files. Turned out the JSON files didn't exist where I thought - I'd been typing the full path again inside VS Code's "New File" box while already positioned inside the target folder, which created a duplicated, oddly-named nested folder instead of the file I expected. Fixed by creating files with just their filename from inside the correct folder, and checking with `Test-Path` before running anything that reads a file. Also needed the `@` prefix on `--params`/`--rules` so the CLI knows to read a file instead of parsing the string itself.
+
+Assumed the built-in tag-inheritance policy needed a "Tag Contributor" role for its managed identity - checked the actual policy definition before running anything and it's `Contributor`, not a tag-specific role.
+
+Reused `rg-lab1` (from the Networking domain) for one command in Task 3 instead of creating a throwaway resource group, since Deny policies block before anything gets provisioned - no risk to the existing lab.
+
+## Cleanup
+
+```powershell
+az lock delete --name protect-lab01 --resource-group rg-lab01-governance
+az group delete -n rg-lab01-governance --yes --no-wait
+```
+
+Keeping the budget, the management group, and the location policy - they don't cost anything and they'll keep protecting whatever comes next in this subscription.
 
