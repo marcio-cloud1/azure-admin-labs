@@ -40,7 +40,7 @@ Billing Account (Marcio Moreira Marques)
 
 ## Tasks
 
-### 1. Budget (✅ completed)
+### 1. Budget (completed)
 Portal → Cost Management → Budgets → created `lab-budget1`, scope: **Billing Account** (Marcio Moreira Marques). Amount: $50.00 USD/month, resets monthly. Alerts (actual cost): 50% ($25), 80% ($40), 100% ($50) → email to marciomarquesbh@gmail.com.
 
 **Note:** the original plan targeted Subscription scope; Azure Cost Management also supports Billing Account, Billing Profile, and Resource Group scopes. Billing Account scope was used here, which extends the guardrail to any future subscription under this billing account.
@@ -50,7 +50,7 @@ Portal → Cost Management → Budgets → created `lab-budget1`, scope: **Billi
   <img src="screenshots/task1-budget-summary.png" width="400" />
 </p>
 
-### 2. Management group (✅ completed)
+### 2. Management group (completed)
 
 ```powershell
 az account management-group create --name mg-corp --display-name "Corp"
@@ -61,7 +61,7 @@ az account management-group subscription add --name mg-corp --subscription 9c131
   <img src="screenshots/task2-management-group.png" width="500" />
 </p>
 
-### 3. Built-in policy — Allowed locations (Deny) (✅ completed)
+### 3. Built-in policy — Allowed locations (Deny) (completed)
 
 ```powershell
 az policy assignment create --name allowed-locations --scope /providers/Microsoft.Management/managementGroups/mg-corp --policy e56962a6-4747-49cd-b67b-bf8b01975c4c --params @labs/01-identity-governance/scripts/task3-params.json
@@ -77,7 +77,7 @@ az storage account create --name teststoragedeny01 --resource-group rg-lab1 --lo
   <img src="screenshots/task3-policy-deny.png" width="500" />
 </p>
 
-### 4. Custom policy — audit public blob access (✅ completed)
+### 4. Custom policy — audit public blob access (completed)
 
 ```powershell
 az policy definition create --name audit-public-blob --rules @labs/01-identity-governance/scripts/policy-audit-public-blob.json --mode Indexed
