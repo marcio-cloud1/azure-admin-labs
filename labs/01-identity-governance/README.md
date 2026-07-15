@@ -133,3 +133,17 @@ Went with Virtual Machine Contributor instead of plain Contributor, scoped to ju
   <img src="screenshots/task6-rbac-assignment.png" width="480" />
 </p>
 
+### 7. Resource lock: CanNotDelete (Completed)
+
+```powershell
+az lock create --name protect-lab01 --lock-type CanNotDelete --resource-group rg-lab01-governance
+
+az network nsg delete --name nsg-test-tag --resource-group rg-lab01-governance
+```
+
+Delete attempt failed with `ScopeLocked` - the CLI/ARM name for what the Portal calls a "Delete" lock (the Portal's "Read-only" lock shows up as `ReadOnly` in the CLI). To actually remove something later, the order has to be: remove the lock, delete, then re-apply the lock if it's still needed.
+
+<p align="center">
+  <img src="screenshots/task7-resource-lock.png" width="480" />
+</p>
+
